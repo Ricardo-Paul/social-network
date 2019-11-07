@@ -185,6 +185,9 @@ app.post('/login', (request, response) =>{
         return response.json({token})
     })
     .catch(err => {
+        if(err.code === "auth/wrong-password"){
+            response.status(403).json({ error: 'wrong password please try again' })
+        }
         console.error(err);
         return response.status(500).json({ errror: err.code })
     });
