@@ -22,11 +22,11 @@ const config = {
 // npm install --save firebase
 const firebase = require('firebase');
 firebase.initializeApp(config);
+const db = admin.firestore();
 
 
 app.get('/screams', (request, response) => {
-    admin
-    .firestore()
+    db
     .collection('screams')
     .orderBy( 'createdAt', 'desc' )
     .get()
@@ -77,7 +77,16 @@ app.post('/scream', (request, response) => {
 // https://baseurl/api/...
 
 
+
+
+
+
+
+
+
+
 // SignUp route
+let token, userId;
 app.post( '/signup', (request, response) =>{
     const newUser = {
         email: request.body.email,
@@ -86,15 +95,44 @@ app.post( '/signup', (request, response) =>{
         handle: request.body.handle
     }
 
-// Now using firebase to authenticate user
-firebase.auth().createUserWithEmailAndPassword(newUser.email, newUser.password)
+    // validate
+    db.doc(`/users/${newUser.handle}`).get()
+    .then( doc => {
+        if(doc.exixts){
+            return response.status(400).json({ handle: 'this handle is already taken' })
+        }else {
+           return firebase.auth().createUserWithEmailAndPassword(newUser.email, newUser.password)
+        }
+    })
     .then(data => {
-        return response.status(201).json({ message: `user ${data.user.uid} signed up successfully` })
+        // now we have our user created
+        userId = data.user.uid;
+       return data.user.getIdToken();
+       console.log(data)
     })
-    .catch( (err) =>{
+    .then(token => {
+        token = token;
+        // return response.status(201).json({ token  });
+        const userCredentials = {
+            handle: newUser.handle,
+            email: newUser.email,
+            createdAt: new Date.toISOString(),
+            userId
+        };
+        // this will programmatically create the users collection in the database
+        db.doc(`/users/${newUser.handle}`).set(userCredentials);
+    })
+    .then( () => {
+        return response.status(201).json({ token });
+    })
+    .catch(err => {
         console.error(err);
-        return response.status(500).json({error: 'an error has occured'})
-    })
-})
+        if (err.code = 'auth/email-already-in-use'){
+            return response.status(400).json({ email: 'email is already in use' })
+        } else {
+            return response.status(500).json({error: err.code });
+        }
+    });
+});
 
 exports.api = functions.https.onRequest(app);
