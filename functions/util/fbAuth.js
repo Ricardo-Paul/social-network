@@ -1,6 +1,6 @@
 const { admin } = require('./admin');
-
-FBAuth.exports = (req, res, next) => {
+const { db } = require('./admin');
+module.exports = (req, res, next) => {
   let idToken;
   if (
     req.headers.authorization &&
