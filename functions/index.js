@@ -4,6 +4,8 @@ const admin = require('firebase-admin');
 // // https://firebase.google.com/docs/functions/write-firebase-functions
 const app = require('express')();
 admin.initializeApp();
+const db = admin.firestore();
+
 
 
 // ---- Adding firebase to our app
@@ -22,7 +24,6 @@ const config = {
 // npm install --save firebase
 const firebase = require('firebase');
 firebase.initializeApp(config);
-const db = admin.firestore();
 
 
 app.get('/screams', (request, response) => {
@@ -47,7 +48,18 @@ app.get('/screams', (request, response) => {
         return response.json(screams);
     })
     .catch( (err) => console.error(err));
-})
+});
+
+
+
+
+
+
+
+
+
+
+
 
 app.post('/scream', (request, response) => {
     // if (request.method !== 'POST') {
@@ -94,104 +106,58 @@ const isEmail = (email) => {
     else return false;
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 // SignUp route
-let token, userId;
-app.post( '/signup', (request, response) =>{
+app.post('/signup', (request, response) =>{
     const newUser = {
         email: request.body.email,
         password: request.body.password,
         confirmPassword: request.body.confirmPassword,
-        handle: request.body.handle
-    }
+        handle: request.body.handle,
+    };
 
-    let errors = {};
-    if(isEmpty(newUser.email)){
-        errors.email = 'Email must not be empty'
-    } else if(!isEmail(newUser.email)){
-        errors.email = 'Must be a valid email adress'
-    }
-
-    if(isEmpty(newUser.password)) errors.password = 'Must not be empty'
-    if(isEmpty(newUser.handle)) errors.handle = 'Must not be empty'
-    if(newUser.password !== newUser.confirmPassword) errors.confirmPassword = 'Passwords must watch';
-
-    if(Object.keys(errors).length > 0) return response.status(400).json(errors);
-    
-
-    // validate
+    // TODO: validate data
     db.doc(`/users/${newUser.handle}`).get()
-    .then( doc => {
-        if(doc.exixts){
-            return response.status(400).json({ handle: 'this handle is already taken' })
-        }else {
+    .then(doc => {
+        if(doc.exists){
+            return response.status(400).json({message: 'handle taken'})
+        } else{
            return firebase.auth().createUserWithEmailAndPassword(newUser.email, newUser.password)
         }
     })
     .then(data => {
-        // now we have our user created
-        userId = data.user.uid;
        return data.user.getIdToken();
-       console.log(data)
-    })
-    .then(token => {
-        token = token;
-        // return response.status(201).json({ token  });
-        const userCredentials = {
-            handle: newUser.handle,
-            email: newUser.email,
-            createdAt: new Date.toISOString(),
-            userId
-        };
-        // this will programmatically create the users collection in the database
-        db.doc(`/users/${newUser.handle}`).set(userCredentials);
-    })
-    .then( () => {
-        return response.status(201).json({ token });
-    })
-    .catch(err => {
-        console.error(err);
-        if (err.code = 'auth/email-already-in-use'){
-            return response.status(400).json({ email: 'email is already in use' })
-        } else {
-            return response.status(500).json({error: err.code });
-        }
-    });
-});
-
-
-
-
-
-
-// Login 
-app.post('/login', (request, response) =>{
-    const user = {
-        email: request.body.email,
-        password: request.body.password
-    };
-
-    let errors = {};
-
-    if(isEmpty(user.email)) errors.email = "Must not be empty";
-    if(isEmpty(user.password)) errors.password = "Must not be empty";
-
-    if(Object.keys(errors).length > 0) return response.status(400).json(errors)
-
-    firebase.auth().signInWithEmailAndPassword(user.email, user.password)
-    .then( data => {
-        return data.user.getIdToken();
     })
     .then(token =>{
-        return response.json({token})
+        return response.status(201).json({token})
     })
-    .catch(err => {
-        if(err.code === "auth/wrong-password"){
-            response.status(403).json({ error: 'wrong password please try again' })
-        }
-        console.error(err);
-        return response.status(500).json({ errror: err.code })
-    });
+    .catch(err =>{
+        console.error(err.code)
+    })
 });
+
+
+
+
+
+
+
+
+
+
+
 
 // Ensure you get the user token everytime they login
 // data (the promise) data.user.getIdToken
