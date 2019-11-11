@@ -204,7 +204,7 @@ exports.deleteScream = (req, res) => {
   document.get()
     .then(doc => {
       if (!doc.exists){
-        return res.status(404).josn({error: 'Scream not found'});
+        return res.status(404).json({error: 'Scream not found'});
       }
       if (doc.data().userHandle !== req.user.handle){
         res.status(403).json({error: 'Deletion access denied'})
